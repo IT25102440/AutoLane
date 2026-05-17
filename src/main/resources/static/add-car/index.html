@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="icon" type="image/png" href="/icns/favicon.png"/>
+    <title>AutoLane — Add Car</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="/css/style.css"/>
+    <style>
+        /* image preview */
+        .image-preview {
+            display: none;
+            margin-top: 1rem;
+            position: relative;
+        }
+        .image-preview img {
+            width: 100%;
+            max-height: 280px;
+            object-fit: cover;
+            display: block;
+        }
+        .image-preview .remove-img {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: rgba(0,0,0,0.8);
+            color: var(--error);
+            border: 1px solid var(--error);
+            padding: 0.3rem 0.6rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div id="navbar-root" data-mode="back-dashboard"></div>
+
+<div class="page-wrap">
+    <div class="page-eyebrow">Seller</div>
+    <div class="page-title">Add New Car</div>
+    <div class="page-sub">Fill in the details below. Your listing will be visible to all buyers immediately.</div>
+
+    <div class="alert-msg error" id="errorMsg"></div>
+    <div class="alert-msg success" id="successMsg"></div>
+
+    <div class="form-card">
+
+        <div class="form-section">
+            <div class="form-section-title">Car Details</div>
+            <div class="field-grid">
+                <div class="field-wrap">
+                    <label for="brand">Brand *</label>
+                    <input type="text" id="brand" placeholder="e.g. Toyota" required />
+                </div>
+                <div class="field-wrap">
+                    <label for="model">Model *</label>
+                    <input type="text" id="model" placeholder="e.g. Corolla" required />
+                </div>
+                <div class="field-wrap">
+                    <label for="year">Year *</label>
+                    <input type="number" id="year" placeholder="e.g. 2019" min="1990" max="2025" required />
+                </div>
+                <div class="field-wrap">
+                    <label for="mileage">Mileage (km) *</label>
+                    <input type="number" id="mileage" placeholder="e.g. 45000" min="0" required />
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-title">Pricing & Location</div>
+            <div class="field-grid">
+                <div class="field-wrap">
+                    <label for="price">Price (USD) *</label>
+                    <input type="number" id="price" placeholder="e.g. 12500" min="0" step="0.01" required />
+                </div>
+                <div class="field-wrap">
+                    <label for="location">District</label>
+                    <select id="location"></select>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-title">Car Photo</div>
+
+            <div class="upload-zone" id="uploadZone">
+                <!-- name="image" must match @RequestPart in SellerController -->
+                <input
+                        type="file"
+                        id="imageInput"
+                        name="image"
+                        accept="image/jpeg,image/png,image/webp"
+                />
+                <span class="upload-icon">📷</span>
+                <div class="upload-label">Click or drag & drop your photo here</div>
+                <div class="upload-hint">Supports <span>JPG, PNG, WEBP</span> · Max 5MB</div>
+            </div>
+
+            <div class="image-preview" id="imagePreview">
+                <img id="previewImg" src="" alt="Preview" />
+                <button class="remove-img" onclick="removeImage()">✕ Remove</button>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="/seller-dashboard" class="cancel-btn">Cancel</a>
+            <button class="submit-btn" id="submitBtn" onclick="handleSubmit()">
+                Publish Listing →
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<footer>
+    <p>© 2026 AutoLane | WD.08.1.149</p>
+</footer>
+
+<script src="/js/auth.js"></script>
+<script src="/js/navbar.js"></script>
+<script src="/js/utils.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        populateDistricts('location', 'Select a district');
+        const user = await requireRole('SELLER');
+        if (!user) return;
+        setupUploadZone();
+    });
+
+    function setupUploadZone() {
+        const zone = document.getElementById('uploadZone');
+        const input = document.getElementById('imageInput');
+
+        input.addEventListener('change', () => {
+            if (input.files && input.files[0]) {
+                showPreview(input.files[0]);
+            }
+        });
+
+        zone.addEventListener('dragover', e => {
+            e.preventDefault();
+            zone.classList.add('dragover');
+        });
+        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+        zone.addEventListener('drop', e => {
+            e.preventDefault();
+            zone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                // put dropped file into the input so FormData picks it up
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+                showPreview(file);
+            }
+        });
+    }
+
+    function showPreview(file) {
+        const preview = document.getElementById('imagePreview');
+        const img = document.getElementById('previewImg');
+        const reader = new FileReader();
+        reader.onload = e => {
+            img.src = e.target.result;
+            preview.style.display = 'block';
+            document.getElementById('uploadZone').style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function removeImage() {
+        document.getElementById('imageInput').value = '';
+        document.getElementById('imagePreview').style.display = 'none';
+        document.getElementById('uploadZone').style.display = 'block';
+        document.getElementById('previewImg').src = '';
+    }
+
+    async function handleSubmit() {
+        const btn = document.getElementById('submitBtn');
+
+        const brand = document.getElementById('brand').value.trim();
+        const model = document.getElementById('model').value.trim();
+        const year = document.getElementById('year').value.trim();
+        const mileage = document.getElementById('mileage').value.trim();
+        const price = document.getElementById('price').value.trim();
+        const location = document.getElementById('location').value.trim();
+        const imageFile = document.getElementById('imageInput').files[0];
+
+        if (!brand || !model || !year || !mileage || !price) {
+            showAlert('error', 'Please fill in all required fields (marked with *).');
+            return;
+        }
+
+        if (isNaN(price) || Number(price) <= 0) {
+            showAlert('error', 'Please enter a valid price.');
+            return;
+        }
+
+        if (isNaN(year) || Number(year) < 1990 || Number(year) > 2025) {
+            showAlert('error', 'Please enter a valid year between 1990 and 2025.');
+            return;
+        }
+
+        // multipart — can't use JSON when sending a file
+        const formData = new FormData();
+        const carData = { brand, model, year: Number(year), mileage: Number(mileage), price: Number(price), location };
+        formData.append('car', new Blob([JSON.stringify(carData)], { type: 'application/json' }));
+
+        if (imageFile) {
+            formData.append('image', imageFile);
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Publishing...';
+        hideAlerts();
+
+        try {
+            // no Content-Type header — browser sets the multipart boundary automatically
+            const res = await fetch('/api/seller/cars', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            });
+
+            if (res.ok) {
+                showAlert('success', 'Listing published! Redirecting to your dashboard...');
+                btn.textContent = 'Published ✓';
+                setTimeout(() => {
+                    window.location.href = '/seller-dashboard';
+                }, 1500);
+            } else {
+                let message = 'Failed to publish listing. Please try again.';
+                try {
+                    const data = await res.json();
+                    if (data.message) message = data.message;
+                } catch (_) {}
+                showAlert('error', message);
+                btn.disabled = false;
+                btn.textContent = 'Publish Listing →';
+            }
+
+        } catch (err) {
+            showAlert('error', 'Could not connect to server. Is the backend running?');
+            btn.disabled = false;
+            btn.textContent = 'Publish Listing →';
+        }
+    }
+
+    function showAlert(type, msg) {
+        hideAlerts();
+        const el = document.getElementById(type === 'error' ? 'errorMsg' : 'successMsg');
+        el.textContent = msg;
+        el.classList.add('show');
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function hideAlerts() {
+        document.getElementById('errorMsg').classList.remove('show');
+        document.getElementById('successMsg').classList.remove('show');
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="icon" type="image/png" href="/icns/favicon.png"/>
+    <title>AutoLane — Seller Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="/css/style.css"/>
+    <style>
+        /* add button */
+        .add-btn {
+            background: var(--accent);
+            color: var(--black);
+            border: 1px solid var(--accent);
+            padding: 0.7rem 1.5rem;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .add-btn:hover { background: transparent; color: var(--accent); }
+
+        /* listings */
+        .listings-wrap { padding: 2rem; }
+        .listings-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--muted);
+            margin-bottom: 1rem;
+        }
+
+        .car-row {
+            display: grid;
+            grid-template-columns: 80px 1fr auto;
+            gap: 1rem;
+            align-items: center;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 1rem;
+            margin-bottom: 1px;
+            transition: background 0.2s;
+        }
+        .car-row:hover { background: #1a1a1a; }
+
+        .car-row-thumb {
+            width: 80px;
+            height: 55px;
+            object-fit: cover;
+            display: block;
+            background: var(--grey);
+        }
+        .car-row-thumb-placeholder {
+            width: 80px;
+            height: 55px;
+            background: var(--grey);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--border);
+        }
+
+        .car-row-info .car-name {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.3rem;
+            letter-spacing: 0.5px;
+            line-height: 1.1;
+        }
+        .car-row-info .car-meta { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
+        .car-row-info .car-price { font-size: 0.9rem; font-weight: 600; color: var(--accent); margin-top: 0.2rem; }
+
+        .car-row-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+        .action-btn {
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--white);
+            padding: 0.4rem 0.9rem;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        .action-btn.edit:hover { border-color: var(--accent); color: var(--accent); }
+        .action-btn.delete { border-color: transparent; color: var(--muted); }
+        .action-btn.delete:hover { border-color: var(--error); color: var(--error); }
+
+        /* empty state */
+        .state-wrap .state-action {
+            display: inline-block;
+            margin-top: 1.5rem;
+            background: var(--accent);
+            color: var(--black);
+            padding: 0.7rem 1.5rem;
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .state-wrap .state-action:hover { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+    </style>
+</head>
+<body>
+
+<div id="navbar-root" data-mode="seller-nav"></div>
+
+<div class="page-header">
+    <div class="profile-block">
+        <div class="profile-avatar-lg" id="profileAvatar">?</div>
+        <div>
+            <div class="profile-role-tag">Seller Account</div>
+            <div class="profile-name-lg" id="profileName">Loading...</div>
+            <div class="profile-email-lg" id="profileEmail"></div>
+        </div>
+    </div>
+    <a href="/add-car" class="add-btn">+ Add New Car</a>
+</div>
+
+<div class="stats-row">
+    <div class="stat-box">
+        <div class="stat-label">Total Listings</div>
+        <div class="stat-value" id="statTotal">—</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Highest Price</div>
+        <div class="stat-value" id="statHighest">—</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Lowest Price</div>
+        <div class="stat-value" id="statLowest">—</div>
+    </div>
+</div>
+
+<div class="listings-wrap">
+    <div class="listings-label">Your Cars</div>
+    <div id="loadingState" class="state-wrap">
+        <span class="state-icon">⏳</span>
+        <p>Loading your listings...</p>
+    </div>
+    <div id="emptyState" class="state-wrap" style="display:none;">
+        <span class="state-icon">🚗</span>
+        <p>You haven't listed any cars yet.</p>
+        <a href="/add-car" class="state-action">+ Add Your First Car</a>
+    </div>
+    <div id="carList"></div>
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal-box">
+        <h3>Delete Listing?</h3>
+        <p>This will permanently remove the car from AutoLane. This action cannot be undone.</p>
+        <div class="modal-actions">
+            <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+            <button class="modal-btn confirm" id="confirmDeleteBtn">Delete</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-bar" id="toastBar"></div>
+
+<footer>
+    <p>© 2026 AutoLane | WD.08.1.149</p>
+</footer>
+
+<script src="/js/auth.js"></script>
+<script src="/js/navbar.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const user = await requireRole('SELLER', { wrongRoleUrl: '/admin-dashboard' });
+        if (!user) return;
+
+        document.getElementById('profileAvatar').textContent = user.name.charAt(0).toUpperCase();
+        document.getElementById('profileName').textContent = user.name;
+        document.getElementById('profileEmail').textContent = user.email;
+
+        loadCars();
+    });
+
+    async function loadCars() {
+        try {
+            const res = await fetch('/api/seller/cars', { credentials: 'include' });
+
+            if (!res.ok) throw new Error('Failed to load cars');
+
+            const cars = await res.json();
+
+            document.getElementById('loadingState').style.display = 'none';
+
+            if (cars.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+                updateStats([]);
+                return;
+            }
+
+            updateStats(cars);
+            renderCarList(cars);
+
+        } catch (err) {
+            document.getElementById('loadingState').style.display = 'none';
+            showToast('Could not load your listings.', 'error');
+        }
+    }
+
+    function renderCarList(cars) {
+        const list = document.getElementById('carList');
+        list.innerHTML = '';
+
+        cars.forEach(car => {
+            const row = document.createElement('div');
+            row.className = 'car-row';
+            row.id = `car-row-${car.id}`;
+
+            const thumbHtml = car.imagePath
+                ? `<img class="car-row-thumb" src="/uploads/${car.imagePath}" alt="${car.brand} ${car.model}"
+               onerror="this.outerHTML='<div class=\\'car-row-thumb-placeholder\\'>🚗</div>'">`
+                : `<div class="car-row-thumb-placeholder">🚗</div>`;
+
+            row.innerHTML = `
+          ${thumbHtml}
+          <div class="car-row-info">
+            <div class="car-name">${car.brand} ${car.model}</div>
+            <div class="car-meta">${car.year} · ${Number(car.mileage).toLocaleString()} km · ${car.location || 'No location'}</div>
+            <div class="car-price">Rs. ${Number(car.price).toLocaleString()}</div>
+          </div>
+          <div class="car-row-actions">
+            <a href="/edit-car?id=${car.id}" class="action-btn edit">Edit</a>
+            <button class="action-btn delete" onclick="askDelete(${car.id}, '${car.brand} ${car.model}')">Delete</button>
+          </div>
+        `;
+
+            list.appendChild(row);
+        });
+    }
+
+    // Calculate simple stats from the loaded cars array
+    function updateStats(cars) {
+        document.getElementById('statTotal').textContent = cars.length;
+
+        if (cars.length === 0) {
+            document.getElementById('statHighest').textContent = '—';
+            document.getElementById('statLowest').textContent = '—';
+            return;
+        }
+
+        const prices = cars.map(c => Number(c.price));
+        const highest = Math.max(...prices);
+        const lowest = Math.min(...prices);
+
+        document.getElementById('statHighest').textContent = `Rs. ${highest.toLocaleString()}`;
+        document.getElementById('statLowest').textContent = `Rs. ${lowest.toLocaleString()}`;
+    }
+
+    let pendingDeleteId = null;
+
+    function askDelete(id, name) {
+        pendingDeleteId = id;
+        document.querySelector('#deleteModal p').textContent =
+            `This will permanently remove "${name}" from AutoLane. This cannot be undone.`;
+        document.getElementById('deleteModal').classList.add('show');
+
+        document.getElementById('confirmDeleteBtn').onclick = () => confirmDelete(id);
+    }
+
+    function closeModal() {
+        document.getElementById('deleteModal').classList.remove('show');
+        pendingDeleteId = null;
+    }
+
+    async function confirmDelete(id) {
+        closeModal();
+
+        try {
+            const res = await fetch(`/api/seller/cars/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+
+            if (res.ok) {
+                const row = document.getElementById(`car-row-${id}`);
+                if (row) row.remove();
+
+                const remaining = document.querySelectorAll('.car-row');
+                document.getElementById('statTotal').textContent = remaining.length;
+
+                if (remaining.length === 0) {
+                    document.getElementById('emptyState').style.display = 'block';
+                    updateStats([]);
+                }
+
+                showToast('Listing deleted successfully.', 'success');
+            } else {
+                showToast('Could not delete listing. Try again.', 'error');
+            }
+
+        } catch (err) {
+            showToast('Server error. Please try again.', 'error');
+        }
+    }
+
+    function showToast(msg, type) {
+        const toast = document.getElementById('toastBar');
+        toast.textContent = msg;
+        toast.className = 'toast-bar ' + (type || 'error') + ' show';
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+</script>
+
+</body>
+</html>
